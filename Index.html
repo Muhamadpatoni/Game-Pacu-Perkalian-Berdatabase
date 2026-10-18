@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pacu Perkalian - Muhamad Patoni, S.S.</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        fredoka: ['Fredoka', 'sans-serif'],
+                        sans: ['Plus Jakarta Sans', 'sans-serif']
+                    },
+                    colors: {
+                        brand: {
+                            purple: '#6C5CE7',
+                            yellow: '#FDCB6E',
+                            pink: '#FD79A8',
+                            blue: '#0984E3',
+                            green: '#00B894',
+                            red: '#D63031',
+                            dark: '#2D3436'
+                        }
+                    },
+                    keyframes: {
+                        pulseFast: {
+                            '0%, 100%': { transform: 'scale(1)' },
+                            '50%': { transform: 'scale(1.08)' }
+                        },
+                        shake: {
+                            '0%, 100%': { transform: 'translateX(0)' },
+                            '20%, 60%': { transform: 'translateX(-8px)' },
+                            '40%, 80%': { transform: 'translateX(8px)' }
+                        },
+                        popIn: {
+                            '0%': { opacity: '0', transform: 'scale(0.8)' },
+                            '100%': { opacity: '1', transform: 'scale(1)' }
+                        }
+                    },
+                    animation: {
+                        'pulse-fast': 'pulseFast 0.5s infinite',
+                        'shake': 'shake 0.4s ease-in-out',
+                        'pop-in': 'popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: linear-gradient(135deg, #a8c0ff 0%, #3f2b96 100%);
+            min-height: 100vh;
+            user-select: none;
+        }
+
+        .game-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+        }
+
+        .font-playful {
+            font-family: 'Fredoka', cursive;
+        }
+
+        /* Custom scrollbar for results list */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* Number input style */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-3 md:p-6 text-gray-800">
+
+    <script>
+        // Web Audio API for interactive sound effects without external audio asset dependencies
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            playTone(freq, type = 'sine', duration = 0.1, gainVal = 0.1) {
+                if (this.muted) return;
+                this.init();
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.value = freq;
+                    gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch(e) {}
+            }
+
+            correct() {
+                if (this.muted) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523.25, now); // C5
+                osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
+                osc.frequency.setValueAtTime(783.99, now + 0.16); // G5
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.35);
+            }
+
+            wrong() {
+                if (this.muted) return;
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(220, now);
+                osc.frequency.setValueAtTime(164.81, now + 0.12);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.35);
+            }
+
+            tick() {
+                this.playTone(800, 'sine', 0.03, 0.05);
+            }
+
+            click() {
+                this.playTone(400, 'sine', 0.05, 0.08);
+            }
+
+            fanfare() {
+                if (this.muted) return;
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+                notes.forEach((freq, idx) => {
+                    setTimeout(() => {
+                        this.playTone(freq, 'triangle', 0.3, 0.2);
+                    }, idx * 120);
+                });
+            }
+        }
+
+        const sound = new SoundEngine();
+    </script>
+
+    <!-- Main Game Container -->
+    <main class="w-full max-w-2xl game-card rounded-3xl p-5 md:p-8 relative overflow-hidden transition-all duration-300">
+        
+        <!-- Mute/Audio Toggle Button -->
+        <button id="soundToggleBtn" onclick="toggleSound()" class="absolute top-5 right-5 w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center transition-transform active:scale-90 z-20" title="Atur Suara">
+            <i id="soundIcon" class="fas fa-volume-up text-lg"></i>
+        </button>
+
+        <!-- 1. START SCREEN -->
+        <section id="startScreen" class="flex flex-col items-center text-center py-4 animate-pop-in">
+            <div class="inline-flex items-center justify-center w-20 h-20 bg-amber-100 text-amber-500 rounded-full mb-4 shadow-inner">
+                <i class="fas fa-bolt text-4xl"></i>
+            </div>
+            <h1 class="text-3xl md:text-5xl font-extrabold font-playful text-brand-dark mb-2 tracking-wide">
+                Pacu Perkalian
+            </h1>
+            <p class="text-gray-600 text-base md:text-lg max-w-md mb-2">
+                Latih kemampuan perkalian 1 sampai 10 dengan memainkan game ini.
+            </p>
+            <p class="text-sm text-gray-500 mb-7">oleh Muhamad Patoni, S.S.</p>
+            <div class="flex flex-col gap-3 w-full max-w-md">
+                <div class="text-left">
+                    <label for="playerName" class="block text-sm font-bold text-gray-700 mb-1">Nama Lengkap</label>
+                    <input id="playerName" type="text" maxlength="100" autocomplete="name" placeholder="Masukkan nama lengkap"
+                        class="w-full bg-white border-2 border-indigo-200 focus:border-brand-purple focus:ring-2 focus:ring-indigo-100 rounded-xl px-4 py-3 outline-none transition-all">
+                </div>
+                <div class="text-left">
+                    <label for="playerClass" class="block text-sm font-bold text-gray-700 mb-1">Kelas</label>
+                    <select id="playerClass" required
+                        class="w-full bg-white border-2 border-indigo-200 focus:border-brand-purple focus:ring-2 focus:ring-indigo-100 rounded-xl px-4 py-3 outline-none transition-all">
+                        <option value="">Pilih kelas</option>
+                        <optgroup label="Kelas 7">
+                            <option value="7A">7A</option><option value="7B">7B</option><option value="7C">7C</option><option value="7D">7D</option><option value="7E">7E</option><option value="7F">7F</option><option value="7G">7G</option><option value="7H">7H</option><option value="7I">7I</option><option value="7J">7J</option><option value="7K">7K</option>
+                        </optgroup>
+                        <optgroup label="Kelas 8">
+                            <option value="8A">8A</option><option value="8B">8B</option><option value="8C">8C</option><option value="8D">8D</option><option value="8E">8E</option><option value="8F">8F</option><option value="8G">8G</option><option value="8H">8H</option><option value="8I">8I</option><option value="8J">8J</option><option value="8K">8K</option>
+                        </optgroup>
+                        <optgroup label="Kelas 9">
+                            <option value="9A">9A</option><option value="9B">9B</option><option value="9C">9C</option><option value="9D">9D</option><option value="9E">9E</option><option value="9F">9F</option><option value="9G">9G</option><option value="9H">9H</option><option value="9I">9I</option><option value="9J">9J</option><option value="9K">9K</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <p id="loginError" class="hidden text-sm text-rose-600 font-semibold text-left">Silakan isi Nama Lengkap dan Kelas terlebih dahulu.</p>
+                <button onclick="continueToLevels()" class="w-full bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-900 font-extrabold py-4 px-6 rounded-2xl shadow-lg transition-all flex items-center justify-center gap-3 text-lg">
+                    <i class="fas fa-list-ol"></i> Lanjut Pilih Level
+                </button>
+                <button onclick="showInstructions()" class="w-full bg-indigo-50 hover:bg-indigo-100 text-brand-purple font-bold py-3.5 px-6 rounded-2xl border-2 border-indigo-200 flex items-center justify-center gap-2">
+                    <i class="fas fa-book-open"></i> Cara Bermain
+                </button>
+                <button onclick="showAbout()" class="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold py-3.5 px-6 rounded-2xl border-2 border-emerald-200 flex items-center justify-center gap-2">
+                    <i class="fas fa-circle-info"></i> Tentang Game
+                </button>
+            </div>
+        </section>
+
+        <!-- LEVEL SELECTION SCREEN -->
+        <section id="levelScreen" class="hidden flex-col py-2 animate-pop-in">
+            <div class="flex items-center justify-between pb-4 border-b border-gray-100 mb-4">
+                <h2 class="text-2xl font-bold font-playful text-brand-purple"><i class="fas fa-list-ol"></i> Pilih Level</h2>
+                <button onclick="showStartScreen()" class="text-gray-400 hover:text-gray-600 p-2" aria-label="Kembali"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <p class="text-gray-600 text-sm mb-4">Pilih tantangan yang ingin kamu mainkan.</p>
+            <div id="levelButtons" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+        </section>
+
+        <!-- LEVEL CONFIRMATION SCREEN -->
+        <section id="levelConfirmScreen" class="hidden flex-col py-2 animate-pop-in">
+            <div class="flex items-center justify-between pb-4 border-b border-gray-100 mb-5">
+                <h2 class="text-2xl font-bold font-playful text-brand-purple"><i class="fas fa-flag-checkered"></i> Siap Bermain?</h2>
+                <button onclick="showLevelScreen()" class="text-gray-400 hover:text-gray-600 p-2" aria-label="Kembali"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="bg-amber-50 border-2 border-amber-200 rounded-2xl p-6 text-center mb-5">
+                <div class="text-sm text-gray-500 mb-1">Level yang dipilih</div>
+                <h3 id="chosenLevelName" class="text-2xl font-extrabold font-playful text-brand-dark">Perkalian 1</h3>
+                <p id="chosenLevelDetails" class="text-sm text-gray-600 mt-2">10 soal • 5 detik per soal</p>
+                <p id="playerGreeting" class="text-sm font-semibold text-indigo-700 mt-4"></p>
+            </div>
+            <button onclick="startGame(selectedLevel)" class="w-full bg-gradient-to-r from-emerald-400 to-emerald-500 hover:from-emerald-500 hover:to-emerald-600 text-white font-extrabold py-4 px-6 rounded-2xl shadow-lg flex items-center justify-center gap-3 text-lg">
+                <i class="fas fa-play"></i> Mulai
+            </button>
+            <button onclick="showLevelScreen()" class="w-full mt-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 px-6 rounded-2xl">Pilih Level Lain</button>
+        </section>
+
+        <!-- ABOUT SCREEN -->
+        <section id="aboutScreen" class="hidden flex-col py-2 animate-pop-in">
+            <div class="flex items-center justify-between pb-4 border-b border-gray-100 mb-5">
+                <h2 class="text-2xl font-bold font-playful text-brand-purple"><i class="fas fa-circle-info"></i> Tentang Game</h2>
+                <button onclick="showStartScreen()" class="text-gray-400 hover:text-gray-600 p-2" aria-label="Kembali"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="bg-indigo-50 border border-indigo-100 rounded-2xl p-5 text-gray-700 leading-relaxed">
+                <h3 class="text-xl font-extrabold font-playful text-brand-dark mb-2">Pacu Perkalian</h3>
+                <p>Game ini dibuat oleh Muhamad Patoni, S.S. untuk keperluan edukasi siswa. Bisa dihubungi lewat email:
+                <a class="text-brand-purple font-bold underline" href="mailto:muhamadpatoni19@gmail.com">muhamadpatoni19@gmail.com</a>.</p>
+            </div>
+            <button onclick="showStartScreen()" class="w-full mt-5 bg-brand-purple hover:bg-indigo-700 text-white font-bold py-3.5 rounded-2xl">Kembali ke Menu Utama</button>
+        </section>
+
+        <!-- 2. INSTRUCTIONS SCREEN / MODAL -->
+        <section id="instructionScreen" class="hidden flex-col py-2 animate-pop-in">
+            <div class="flex items-center justify-between pb-4 border-b border-gray-100 mb-4">
+                <h2 class="text-2xl font-bold font-playful text-brand-purple flex items-center gap-2">
+                    <i class="fas fa-info-circle"></i> Petunjuk Permainan
+                </h2>
+                <button onclick="showStartScreen()" class="text-gray-400 hover:text-gray-600 p-2">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4 text-gray-700 text-sm md:text-base mb-6">
+                <div class="flex items-start gap-3 bg-amber-50 p-3.5 rounded-2xl border border-amber-200/60">
+                    <div class="bg-amber-400 text-white rounded-xl p-2.5 font-bold shrink-0">1</div>
+                    <p>Soal mengikuti level yang kamu pilih: perkalian 1 sampai 10 atau perkalian campuran.</p>
+                </div>
+
+                <div class="flex items-start gap-3 bg-indigo-50 p-3.5 rounded-2xl border border-indigo-200/60">
+                    <div class="bg-brand-purple text-white rounded-xl p-2.5 font-bold shrink-0">2</div>
+                    <p>Jumlah soal mengikuti level yang dipilih: 10, 20, atau 30 soal untuk level campuran.</p>
+                </div>
+
+                <div class="flex items-start gap-3 bg-rose-50 p-3.5 rounded-2xl border border-rose-200/60">
+                    <div class="bg-rose-500 text-white rounded-xl p-2.5 font-bold shrink-0">3</div>
+                    <p>Waktu menjawab tiap soal adalah <strong>5 detik</strong>. Jika melebihi 5 detik, maka dianggap <span class="text-rose-600 font-bold">SALAH</span>.</p>
+                </div>
+
+                <div class="flex items-start gap-3 bg-emerald-50 p-3.5 rounded-2xl border border-emerald-200/60">
+                    <div class="bg-emerald-500 text-white rounded-xl p-2.5 font-bold shrink-0">4</div>
+                    <p>Isi jawabanmu pada kotak isian lalu tekan tombol <strong>"Jawab"</strong> sebelum waktu habis.</p>
+                </div>
+            </div>
+
+            <button onclick="showStartScreen()" class="w-full bg-brand-purple hover:bg-indigo-700 text-white font-bold py-3.5 rounded-2xl transition-all shadow-md">
+                Saya Mengerti
+            </button>
+        </section>
+
+        <!-- 3. PLAYING SCREEN -->
+        <section id="playingScreen" class="hidden flex-col animate-pop-in">
+            <!-- Top Status Bar -->
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs md:text-sm font-semibold uppercase tracking-wider text-gray-400">Soal</span>
+                    <span id="questionCounter" class="text-lg md:text-xl font-bold font-playful text-brand-purple bg-indigo-50 px-3 py-1 rounded-xl border border-indigo-100">1 / 10</span>
+                </div>
+                
+                <div class="flex items-center gap-2">
+                    <span class="text-xs md:text-sm font-semibold uppercase tracking-wider text-gray-400">Skor Sementara</span>
+                    <span id="currentScore" class="text-lg md:text-xl font-bold font-playful text-emerald-600 bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-100">0</span>
+                </div>
+            </div>
+
+            <!-- Timer Bar -->
+            <div class="w-full bg-gray-200 rounded-full h-3.5 mb-6 overflow-hidden relative p-0.5">
+                <div id="timerBar" class="bg-emerald-500 h-full rounded-full transition-all duration-100 ease-linear w-full"></div>
+            </div>
+
+            <!-- Question Card -->
+            <div id="questionContainer" class="bg-gradient-to-b from-slate-50 to-indigo-50/50 rounded-3xl p-6 md:p-8 text-center border-2 border-indigo-100 mb-6 shadow-sm relative">
+                <!-- Countdown Overlay/Number -->
+                <div class="absolute top-3 right-4 flex items-center gap-1 text-sm font-bold text-gray-500">
+                    <i class="far fa-clock"></i>
+                    <span id="timerText" class="w-6 text-left">5s</span>
+                </div>
+
+                <div class="text-xs font-bold text-brand-purple uppercase tracking-widest mb-2">Berapa hasil perkalian ini?</div>
+                <div id="equationDisplay" class="text-4xl md:text-6xl font-extrabold font-playful text-brand-dark tracking-wider my-3">
+                    7 × 8 = ?
+                </div>
+
+                <!-- Input Box Form -->
+                <form id="answerForm" onsubmit="submitAnswer(event)" class="mt-6 flex justify-center items-center max-w-xs mx-auto">
+                    <input 
+                        type="text" 
+                        id="answerInput" 
+                        placeholder="?" 
+                        autocomplete="off"
+                        readonly
+                        inputmode="none"
+                        class="w-40 md:w-48 text-center text-2xl md:text-3xl font-extrabold font-playful bg-white border-2 border-indigo-300 focus:border-brand-purple focus:ring-4 focus:ring-indigo-200 rounded-2xl py-2.5 px-3 text-brand-dark shadow-inner outline-none transition-all cursor-default select-none"
+                    />
+                </form>
+
+                <!-- Feedback Text (Correct / Incorrect / Timeout) -->
+                <div id="feedbackMessage" class="h-8 mt-3 font-bold text-lg flex items-center justify-center gap-2 opacity-0 transition-opacity">
+                    <span id="feedbackText">Benar!</span>
+                </div>
+            </div>
+
+            <!-- On-screen Virtual Numpad (Great for Touch Devices / Mobile) -->
+            <div class="grid grid-cols-3 gap-2 max-w-xs mx-auto w-full">
+                <button type="button" onclick="appendDigit('1')" class="bg-gray-100 hover:bg-gray-200 active:bg-gray-300 font-bold font-playful text-xl text-gray-700 py-2.5 rounded-xl transition-all shadow-sm">1</button>
+                <button type="button" onclick="appendDigit('2')" class="bg-gray-100 hover:bg-gray-200 active:bg-gray-300 font-bold font-playful text-xl text-gray-700 py-2.5 rounded-xl transition-all shadow-sm">2</button>
+                <button type="button" onclick="appendDigit('3')" class="bg-gray-100 hover:bg-gray-200 active:bg-gray-300 font-bold font-playful text-xl text-gray-700 py-2.5 rounded-xl transition-all shadow-sm">3</button>
+                <button type="button" onclick="appendDigit('4')" class="bg-gray-100 hover:bg-gray-200 active:bg-gray-300 font-bold font-playful text-xl text-gray-700 py-2.5 rounded-xl transition-all shadow-sm">4</button>
+                <button type="button" onclick="appendDigit('5')" class="bg-gray-100 hover:bg-gray-200 active:bg-gray-300 font-bold font-playful text-xl text-gray-700 py-2.5 rounded-xl transition-all shadow-sm">5</button>
+                <button type="button" onclick="appendDigit('6')" class="bg-gray-100 hover:bg-gray-200 active:bg-gray-300 font-bold font-playful text-xl text-gray-700 py-2.5 rounded-xl transition-all shadow-sm">6</button>
+                <button type="button" onclick="appendDigit('7')" class="bg-gray-100 hover:bg-gray-200 active:bg-gray-300 font-bold font-playful text-xl text-gray-700 py-2.5 rounded-xl transition-all shadow-sm">7</button>
+                <button type="button" onclick="appendDigit('8')" class="bg-gray-100 hover:bg-gray-200 active:bg-gray-300 font-bold font-playful text-xl text-gray-700 py-2.5 rounded-xl transition-all shadow-sm">8</button>
+                <button type="button" onclick="appendDigit('9')" class="bg-gray-100 hover:bg-gray-200 active:bg-gray-300 font-bold font-playful text-xl text-gray-700 py-2.5 rounded-xl transition-all shadow-sm">9</button>
+                <button type="button" onclick="clearInput()" class="bg-rose-100 hover:bg-rose-200 text-rose-600 font-bold font-playful text-sm py-2.5 rounded-xl transition-all shadow-sm">Hapus</button>
+                <button type="button" onclick="appendDigit('0')" class="bg-gray-100 hover:bg-gray-200 active:bg-gray-300 font-bold font-playful text-xl text-gray-700 py-2.5 rounded-xl transition-all shadow-sm">0</button>
+                <button type="button" onclick="submitAnswer(event)" class="bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-bold font-playful text-base py-2.5 rounded-xl transition-all shadow-sm">Jawab</button>
+            </div>
+        </section>
+
+        <!-- 4. RESULT SCREEN -->
+        <section id="resultScreen" class="hidden flex-col items-center py-2 animate-pop-in">
+            <!-- Badge Icon Header -->
+            <div id="resultBadge" class="w-20 h-20 rounded-full flex items-center justify-center text-4xl mb-3 shadow-lg">
+                <i class="fas fa-trophy"></i>
+            </div>
+
+            <h2 id="resultTitle" class="text-2xl md:text-3xl font-extrabold font-playful text-brand-dark text-center">
+                Permainan Selesai!
+            </h2>
+            <p id="resultSubtitle" class="text-gray-500 text-sm mb-4 text-center">
+                Berikut adalah hasil perolehan nilaimu
+            </p>
+
+            <!-- Score Summary Card -->
+            <div class="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 w-full mb-5 text-center flex items-center justify-around">
+                <div>
+                    <span class="text-xs text-gray-500 font-semibold uppercase block">Skor Akhir</span>
+                    <span id="finalScore" class="text-3xl font-extrabold font-playful text-brand-purple">80</span>
+                </div>
+                <div class="h-8 w-px bg-indigo-200"></div>
+                <div>
+                    <span class="text-xs text-gray-500 font-semibold uppercase block">Benar</span>
+                    <span id="correctCount" class="text-3xl font-extrabold font-playful text-emerald-600">8 / 10</span>
+                </div>
+            </div>
+
+            <!-- Detailed Answer List Header -->
+            <div class="w-full text-left font-bold text-gray-700 mb-2 text-sm flex justify-between items-center px-1">
+                <span><i class="fas fa-list-check text-brand-purple mr-1.5"></i> Detail Jawaban:</span>
+                <span id="resultQuestionCount" class="text-xs text-gray-400 font-normal">Selesai dalam 10 soal</span>
+            </div>
+
+            <!-- Detailed Scrollable List -->
+            <div id="resultList" class="w-full max-h-56 overflow-y-auto space-y-2 mb-6 pr-1">
+                <!-- Dynamically populated rows -->
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-col sm:flex-row gap-3 w-full">
+                <button onclick="showStartScreen()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 px-5 rounded-2xl transition-all text-sm flex items-center justify-center gap-2">
+                    <i class="fas fa-home"></i> Menu Utama
+                </button>
+                <button onclick="startGame()" class="flex-1 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-slate-900 font-extrabold py-3 px-5 rounded-2xl shadow-md shadow-amber-500/20 transition-all text-sm flex items-center justify-center gap-2">
+                    <i class="fas fa-rotate-right"></i> Main Lagi
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // Google Sheets integration: after deploying Apps Script as a Web App, paste its URL below.
+        const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/a/macros/guru.smp.belajar.id/s/AKfycby9vx5gAYa92a-opOus6G2u_iXG0COHSiq-EcDbm2dbvVuOkKSizk1jeiER5Aga0p8Z/exec';
+        let resultSubmissionAttempted = false;
+
+        // Game State Variables
+        let TOTAL_QUESTIONS = 10;
+        let selectedLevel = { name: 'Perkalian 1', type: 'table', number: 1, total: 10 };
+        const LEVELS = [
+            ...Array.from({length: 10}, (_, i) => ({ name: `Perkalian ${i + 1}`, type: 'table', number: i + 1, total: 10 })),
+            { name: 'Campuran 10 Soal', type: 'mixed', total: 10 },
+            { name: 'Campuran 20 Soal', type: 'mixed', total: 20 },
+            { name: 'Campuran 30 Soal', type: 'mixed', total: 30 }
+        ];
+        const TIME_LIMIT_PER_QUESTION = 5; // seconds
+        
+        let questions = [];
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let correctAnswersCount = 0;
+        let resultsHistory = [];
+        
+        let timerInterval = null;
+        let timeRemaining = TIME_LIMIT_PER_QUESTION;
+        let isAnsweringLocked = false;
+        let startTime = 0;
+
+        // DOM Element References
+        const startScreen = document.getElementById('startScreen');
+        const instructionScreen = document.getElementById('instructionScreen');
+        const levelScreen = document.getElementById('levelScreen');
+        const levelConfirmScreen = document.getElementById('levelConfirmScreen');
+        const aboutScreen = document.getElementById('aboutScreen');
+        const playingScreen = document.getElementById('playingScreen');
+        const resultScreen = document.getElementById('resultScreen');
+
+        const questionCounter = document.getElementById('questionCounter');
+        const currentScoreEl = document.getElementById('currentScore');
+        const timerBar = document.getElementById('timerBar');
+        const timerText = document.getElementById('timerText');
+        const equationDisplay = document.getElementById('equationDisplay');
+        const answerInput = document.getElementById('answerInput');
+        const answerForm = document.getElementById('answerForm');
+        const feedbackMessage = document.getElementById('feedbackMessage');
+        const feedbackText = document.getElementById('feedbackText');
+
+        const resultBadge = document.getElementById('resultBadge');
+        const resultTitle = document.getElementById('resultTitle');
+        const resultSubtitle = document.getElementById('resultSubtitle');
+        const finalScoreEl = document.getElementById('finalScore');
+        const correctCountEl = document.getElementById('correctCount');
+        const resultList = document.getElementById('resultList');
+        const resultQuestionCount = document.getElementById('resultQuestionCount');
+
+        // Navigation Functions
+        function hideAllScreens() {
+            [startScreen, instructionScreen, levelScreen, levelConfirmScreen, aboutScreen, playingScreen, resultScreen]
+                .forEach(screen => screen.classList.add('hidden'));
+        }
+
+        function showStartScreen() {
+            sound.click();
+            clearInterval(timerInterval);
+            hideAllScreens();
+            startScreen.classList.remove('hidden');
+        }
+
+        function showInstructions() {
+            sound.click();
+            hideAllScreens();
+            instructionScreen.classList.remove('hidden');
+        }
+
+        function showLevelScreen() {
+            sound.click();
+            clearInterval(timerInterval);
+            hideAllScreens();
+            levelScreen.classList.remove('hidden');
+        }
+
+        function continueToLevels() {
+            sound.click();
+            const name = document.getElementById('playerName').value.trim();
+            const playerClass = document.getElementById('playerClass').value.trim();
+            const error = document.getElementById('loginError');
+            if (!name || !playerClass) {
+                error.classList.remove('hidden');
+                if (!name) document.getElementById('playerName').focus();
+                else document.getElementById('playerClass').focus();
+                return;
+            }
+            error.classList.add('hidden');
+            showLevelScreen();
+        }
+
+        function showLevelConfirmation(level) {
+            sound.click();
+            selectedLevel = level;
+            document.getElementById('chosenLevelName').textContent = level.name;
+            document.getElementById('chosenLevelDetails').textContent = `${level.total} soal • 5 detik per soal`;
+            const name = document.getElementById('playerName').value.trim();
+            document.getElementById('playerGreeting').textContent = `Pemain: ${name} • Kelas ${document.getElementById('playerClass').value.trim()}`;
+            hideAllScreens();
+            levelConfirmScreen.classList.remove('hidden');
+        }
+
+        function showAbout() {
+            sound.click();
+            hideAllScreens();
+            aboutScreen.classList.remove('hidden');
+        }
+
+        function renderLevelButtons() {
+            const container = document.getElementById('levelButtons');
+            container.innerHTML = '';
+            LEVELS.forEach((level, index) => {
+                const button = document.createElement('button');
+                button.className = 'text-left p-4 rounded-2xl border-2 border-indigo-100 bg-white hover:bg-indigo-50 hover:border-indigo-300 transition-all shadow-sm';
+                button.innerHTML = `<span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-indigo-100 text-brand-purple font-extrabold mr-2">${index + 1}</span><span class="font-extrabold text-gray-800">${level.name}</span><span class="block text-xs text-gray-500 mt-2">${level.total} soal • 5 detik per soal</span>`;
+                button.onclick = () => showLevelConfirmation(level);
+                container.appendChild(button);
+            });
+        }
+        renderLevelButtons();
+
+        // Toggle Audio
+        function toggleSound() {
+            sound.muted = !sound.muted;
+            const icon = document.getElementById('soundIcon');
+            if (sound.muted) {
+                icon.className = "fas fa-volume-mute text-rose-500";
+            } else {
+                icon.className = "fas fa-volume-up text-gray-600";
+                sound.click();
+            }
+        }
+
+        // Generate shuffled questions for the selected level
+        function generateQuestionPool() {
+            const possiblePairs = [];
+            if (selectedLevel.type === 'table') {
+                for (let j = 1; j <= 10; j++) {
+                    possiblePairs.push({
+                        factorA: selectedLevel.number,
+                        factorB: j,
+                        answer: selectedLevel.number * j
+                    });
+                }
+            } else {
+                // Level campuran hanya menggunakan faktor 2 sampai 9.
+                // Perkalian dengan kelipatan 1 dan 10 tidak ditampilkan.
+                // Pasangan faktor unik: 2 × 3 dan 3 × 2 dianggap soal yang sama.
+                // Dengan i <= j, setiap soal hanya muncul satu kali dalam satu permainan.
+                for (let i = 2; i <= 9; i++) {
+                    for (let j = i; j <= 9; j++) {
+                        possiblePairs.push({ factorA: i, factorB: j, answer: i * j });
+                    }
+                }
+            }
+
+            for (let i = possiblePairs.length - 1; i > 0; i--) {
+                const rand = Math.floor(Math.random() * (i + 1));
+                [possiblePairs[i], possiblePairs[rand]] = [possiblePairs[rand], possiblePairs[i]];
+            }
+            return possiblePairs.slice(0, TOTAL_QUESTIONS);
+        }
+
+        // Start Game
+        function startGame(level = selectedLevel) {
+            sound.click();
+            selectedLevel = level;
+            TOTAL_QUESTIONS = level.total;
+            questions = generateQuestionPool();
+            currentQuestionIndex = 0;
+            score = 0;
+            correctAnswersCount = 0;
+            resultsHistory = [];
+            resultSubmissionAttempted = false;
+
+            currentScoreEl.textContent = '0';
+            hideAllScreens();
+            playingScreen.classList.remove('hidden');
+
+            loadQuestion();
+        }
+
+        // Load Individual Question
+        function loadQuestion() {
+            isAnsweringLocked = false;
+            answerInput.value = '';
+            
+            // Reset feedback
+            feedbackMessage.style.opacity = '0';
+            feedbackMessage.className = "h-8 mt-3 font-bold text-lg flex items-center justify-center gap-2 opacity-0 transition-opacity";
+
+            const currentQ = questions[currentQuestionIndex];
+            questionCounter.textContent = `${currentQuestionIndex + 1} / ${TOTAL_QUESTIONS}`;
+            equationDisplay.textContent = `${currentQ.factorA} × ${currentQ.factorB} = ?`;
+
+            startTimer();
+        }
+
+        // Countdown Timer Logic
+        function startTimer() {
+            clearInterval(timerInterval);
+            timeRemaining = TIME_LIMIT_PER_QUESTION;
+            startTime = Date.now();
+            
+            updateTimerDisplay();
+
+            timerInterval = setInterval(() => {
+                timeRemaining -= 0.05;
+                if (timeRemaining <= 0) {
+                    timeRemaining = 0;
+                    updateTimerDisplay();
+                    clearInterval(timerInterval);
+                    handleTimeout();
+                } else {
+                    updateTimerDisplay();
+                }
+            }, 50);
+        }
+
+        function updateTimerDisplay() {
+            const percentage = (timeRemaining / TIME_LIMIT_PER_QUESTION) * 100;
+            timerBar.style.width = `${percentage}%`;
+
+            // Color status
+            if (percentage > 50) {
+                timerBar.className = "bg-emerald-500 h-full rounded-full transition-all duration-75 ease-linear w-full";
+            } else if (percentage > 25) {
+                timerBar.className = "bg-amber-500 h-full rounded-full transition-all duration-75 ease-linear w-full";
+            } else {
+                timerBar.className = "bg-rose-500 h-full rounded-full transition-all duration-75 ease-linear w-full animate-pulse";
+            }
+
+            const secondsLeft = Math.ceil(timeRemaining);
+            timerText.textContent = `${secondsLeft}s`;
+        }
+
+        // Append Numpad digit
+        function appendDigit(digit) {
+            if (isAnsweringLocked) return;
+            sound.click();
+            if (answerInput.value.length < 3) {
+                answerInput.value += digit;
+            }
+        }
+
+        function clearInput() {
+            if (isAnsweringLocked) return;
+            sound.click();
+            answerInput.value = '';
+        }
+
+        function deleteDigit() {
+            if (isAnsweringLocked) return;
+            sound.click();
+            answerInput.value = answerInput.value.slice(0, -1);
+        }
+
+        // Physical Keyboard Handler (Desktop support without triggering Mobile Soft Keyboard)
+        window.addEventListener('keydown', (e) => {
+            if (playingScreen.classList.contains('hidden') || isAnsweringLocked) return;
+
+            if (e.key >= '0' && e.key <= '9') {
+                appendDigit(e.key);
+            } else if (e.key === 'Backspace') {
+                deleteDigit();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                submitAnswer();
+            }
+        });
+
+        // Submit Answer Event
+        function submitAnswer(event) {
+            if (event) event.preventDefault();
+            if (isAnsweringLocked) return;
+
+            clearInterval(timerInterval);
+            isAnsweringLocked = true;
+
+            const currentQ = questions[currentQuestionIndex];
+            const userAnswerRaw = answerInput.value.trim();
+            const timeTaken = ((Date.now() - startTime) / 1000).toFixed(1);
+
+            let isCorrect = false;
+            let userAnswerNum = userAnswerRaw === '' ? null : parseInt(userAnswerRaw, 10);
+
+            if (userAnswerNum !== null && userAnswerNum === currentQ.answer) {
+                isCorrect = true;
+            }
+
+            processQuestionResult(isCorrect, userAnswerRaw === '' ? '-' : userAnswerRaw, timeTaken, false);
+        }
+
+        // Handle Timeout
+        function handleTimeout() {
+            if (isAnsweringLocked) return;
+            isAnsweringLocked = true;
+
+            const userAnswerRaw = answerInput.value.trim();
+            processQuestionResult(false, userAnswerRaw === '' ? '-' : userAnswerRaw, TIME_LIMIT_PER_QUESTION.toFixed(1), true);
+        }
+
+        // Process Result & UI Feedback
+        function processQuestionResult(isCorrect, userAnswerText, timeTaken, isTimeout) {
+            const currentQ = questions[currentQuestionIndex];
+
+            if (isCorrect) {
+                sound.correct();
+                const pointsPerCorrect = selectedLevel.type === 'mixed'
+                    ? (TOTAL_QUESTIONS === 20 ? 5 : TOTAL_QUESTIONS === 30 ? (100 / 30) : 10)
+                    : 10;
+                score += pointsPerCorrect;
+                correctAnswersCount++;
+                currentScoreEl.textContent = TOTAL_QUESTIONS === 30 && selectedLevel.type === 'mixed'
+                    ? score.toFixed(1)
+                    : score;
+
+                const pointsLabel = Number.isInteger(pointsPerCorrect) ? pointsPerCorrect : pointsPerCorrect.toFixed(1);
+                feedbackText.innerHTML = `<i class="fas fa-check-circle text-emerald-500"></i> <span class="text-emerald-600">Benar! (+${pointsLabel})</span>`;
+                feedbackMessage.classList.add('opacity-100');
+            } else {
+                sound.wrong();
+                const reason = isTimeout ? 'Waktu Habis!' : 'Kurang Tepat';
+                feedbackText.innerHTML = `<i class="fas fa-times-circle text-rose-500"></i> <span class="text-rose-600">${reason}! Jawaban: <strong>${currentQ.answer}</strong></span>`;
+                feedbackMessage.classList.add('opacity-100');
+            }
+
+            // Record in history
+            resultsHistory.push({
+                question: `${currentQ.factorA} × ${currentQ.factorB}`,
+                correctAnswer: currentQ.answer,
+                userAnswer: userAnswerText,
+                isCorrect: isCorrect,
+                isTimeout: isTimeout,
+                timeTaken: timeTaken
+            });
+
+            // Transition to next question after short delay
+            setTimeout(() => {
+                currentQuestionIndex++;
+                if (currentQuestionIndex < TOTAL_QUESTIONS) {
+                    loadQuestion();
+                } else {
+                    finishGame();
+                }
+            }, 1200);
+        }
+
+        // Send one completed-game record to Google Sheets via Google Apps Script.
+        function sendGameResultToSheets() {
+            if (resultSubmissionAttempted) return;
+            resultSubmissionAttempted = true;
+
+            if (!GOOGLE_APPS_SCRIPT_URL || GOOGLE_APPS_SCRIPT_URL === 'TEMPELKAN_URL_WEB_APP_DI_SINI') {
+                console.warn('Google Sheets belum aktif: URL Web App Apps Script belum dipasang.');
+                return;
+            }
+
+            const payload = {
+                tanggalJam: new Date().toLocaleString('id-ID', {
+                    timeZone: 'Asia/Jakarta',
+                    dateStyle: 'short',
+                    timeStyle: 'medium'
+                }),
+                namaLengkap: document.getElementById('playerName').value.trim(),
+                kelas: document.getElementById('playerClass').value.trim(),
+                level: selectedLevel.name,
+                skor: Math.round(score)
+            };
+
+            // text/plain avoids a CORS preflight; Apps Script receives the JSON in doPost(e).
+            fetch(GOOGLE_APPS_SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(payload)
+            }).catch(error => console.error('Pengiriman rekap ke Google Sheets gagal:', error));
+        }
+
+        // Finish Game & Display Results
+        function finishGame() {
+            sendGameResultToSheets();
+            playingScreen.classList.add('hidden');
+            resultScreen.classList.remove('hidden');
+
+            finalScoreEl.textContent = Math.round(score);
+            correctCountEl.textContent = `${correctAnswersCount} / ${TOTAL_QUESTIONS}`;
+            resultQuestionCount.textContent = `Selesai dalam ${TOTAL_QUESTIONS} soal`;
+
+            // Configure Badge & Titles based on score
+            if (Math.round(score) >= 80) {
+                sound.fanfare();
+                try {
+                    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+                } catch(e) {}
+                
+                resultBadge.className = "w-20 h-20 rounded-full flex items-center justify-center text-4xl mb-3 shadow-lg bg-amber-100 text-amber-500 border-2 border-amber-300";
+                resultBadge.innerHTML = `<i class="fas fa-crown"></i>`;
+                resultTitle.textContent = "Luar Biasa! 🎉";
+                resultSubtitle.textContent = "Kamu sangat mahir dalam perkalian!";
+            } else if (Math.round(score) >= 50) {
+                sound.fanfare();
+                resultBadge.className = "w-20 h-20 rounded-full flex items-center justify-center text-4xl mb-3 shadow-lg bg-indigo-100 text-brand-purple border-2 border-indigo-300";
+                resultBadge.innerHTML = `<i class="fas fa-thumbs-up"></i>`;
+                resultTitle.textContent = "Kerja Bagus! 👍";
+                resultSubtitle.textContent = "Hasil yang baik, terus tingkatkan lagi!";
+            } else {
+                resultBadge.className = "w-20 h-20 rounded-full flex items-center justify-center text-4xl mb-3 shadow-lg bg-rose-100 text-rose-500 border-2 border-rose-300";
+                resultBadge.innerHTML = `<i class="fas fa-seedling"></i>`;
+                resultTitle.textContent = "Ayo Berlatih Lagi! 💪";
+                resultSubtitle.textContent = "Jangan menyerah, coba lagi yuk!";
+            }
+
+            // Render Detailed History List
+            resultList.innerHTML = '';
+            resultsHistory.forEach((item, index) => {
+                const itemEl = document.createElement('div');
+                
+                let bgStyle = item.isCorrect ? "bg-emerald-50 border-emerald-200 text-emerald-950" : "bg-rose-50 border-rose-200 text-rose-950";
+                let iconStatus = item.isCorrect 
+                    ? `<span class="bg-emerald-500 text-white text-xs px-2 py-0.5 rounded-full font-bold flex items-center gap-1"><i class="fas fa-check"></i> Benar</span>`
+                    : (item.isTimeout 
+                        ? `<span class="bg-amber-500 text-white text-xs px-2 py-0.5 rounded-full font-bold flex items-center gap-1"><i class="fas fa-clock"></i> Waktu Habis</span>`
+                        : `<span class="bg-rose-500 text-white text-xs px-2 py-0.5 rounded-full font-bold flex items-center gap-1"><i class="fas fa-times"></i> Salah</span>`);
+
+                itemEl.className = `p-3 rounded-2xl border ${bgStyle} flex items-center justify-between text-sm transition-all`;
+                itemEl.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <span class="w-6 h-6 rounded-lg bg-white/80 font-bold text-xs flex items-center justify-center text-gray-600 shadow-sm">
+                            ${index + 1}
+                        </span>
+                        <div>
+                            <span class="font-extrabold font-playful text-base tracking-wide">${item.question}</span>
+                            <span class="text-xs text-gray-500 block">
+                                Jwb kamu: <strong class="${item.isCorrect ? 'text-emerald-700' : 'text-rose-700'}">${item.userAnswer}</strong>
+                                ${!item.isCorrect ? `| Benar: <strong>${item.correctAnswer}</strong>` : ''}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-end gap-1">
+                        ${iconStatus}
+                        <span class="text-[10px] text-gray-400">${item.timeTaken}s</span>
+                    </div>
+                `;
+                resultList.appendChild(itemEl);
+            });
+        }
+    </script>
+</body>
+</html>
